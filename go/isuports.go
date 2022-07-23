@@ -426,10 +426,12 @@ func flockByTenantID(tenantID int64) (io.Closer, error) {
 		attemptNum++
 		if err := fl.Lock(); err != nil && attemptNum > 4 {
 			return nil, fmt.Errorf("error flock.Lock: path=%s, %w", p, err)
+			break
+		} else {
+			return fl, nil
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-
 	return fl, nil
 }
 

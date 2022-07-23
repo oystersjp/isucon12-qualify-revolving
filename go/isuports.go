@@ -1253,7 +1253,7 @@ func playerHandler(c echo.Context) error {
 	err = tenantDB.SelectContext(
 		ctx,
 		&scoreRows,
-		"SELECT * FROM player_score WHERE tenant_id = ? AND player_id = ? ORDER BY row_num DESC",
+		"SELECT * FROM player_score WHERE tenant_id = ? AND player_id = ?",
 		v.tenantID,
 		p.ID,
 	)

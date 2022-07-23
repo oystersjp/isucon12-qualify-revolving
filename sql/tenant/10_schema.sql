@@ -40,7 +40,7 @@ INSERT INTO player
 SELECT *
 FROM old_player;
 DELETE FROM player_score
-WHERE id IN ('1a0205203', '34433d77a', '4447b4e1', '4ce9b66c7', '547f03113', '597488a14', '59cb9aad2', '412b968ce',
+WHERE competition_id IN ('1a0205203', '34433d77a', '4447b4e1', '4ce9b66c7', '547f03113', '597488a14', '59cb9aad2', '412b968ce',
              '155bf560c', '2d386c750', '3837bcaeb', '3b990b3bb', '501fd6469', '58c33c87', '23ac36ae9', '2c031728',
              '34f91150b', '583c1c2a6', '15a76c3b4', '56d7ff9c5', '16799ccfb', '31ae001f8', '336a3660c', '46d4cf86b',
              '56377c4de', '5a8fe894e', '458a00060', '19f8ee7c0', '1bc806bb7', '2db0f5633', '425450765', '47f52c535',
@@ -107,7 +107,7 @@ WHERE id IN ('1a0205203', '34433d77a', '4447b4e1', '4ce9b66c7', '547f03113', '59
 INSERT INTO player_score
 SELECT *
 FROM old_player_score
-WHERE old_player_score.id IN ('1a0205203', '34433d77a', '4447b4e1', '4ce9b66c7', '547f03113', '597488a14', '59cb9aad2', '412b968ce',
+WHERE old_player_score.competition_id IN ('1a0205203', '34433d77a', '4447b4e1', '4ce9b66c7', '547f03113', '597488a14', '59cb9aad2', '412b968ce',
                               '155bf560c', '2d386c750', '3837bcaeb', '3b990b3bb', '501fd6469', '58c33c87', '23ac36ae9', '2c031728',
                               '34f91150b', '583c1c2a6', '15a76c3b4', '56d7ff9c5', '16799ccfb', '31ae001f8', '336a3660c', '46d4cf86b',
                               '56377c4de', '5a8fe894e', '458a00060', '19f8ee7c0', '1bc806bb7', '2db0f5633', '425450765', '47f52c535',

@@ -539,18 +539,14 @@ func billingReportByCompetition(ctx context.Context, tenantDB dbOrTx, tenantID i
 	if err := adminDB.SelectContext(
 		ctx,
 		&vhs,
-		"SELECT player_id, MIN(created_at) AS min_created_at FROM visit_history WHERE tenant_id = ? AND competition_id = ? GROUP BY player_id",
+		"SELECT player_id FROM ranking_accessed_player WHERE tenant_id = ? AND competition_id = ?",
 		tenantID,
 		comp.ID,
 	); err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("error Select visit_history: tenantID=%d, competitionID=%s, %w", tenantID, comp.ID, err)
+		return nil, fmt.Errorf("error Select ranking_accessed_player: tenantID=%d, competitionID=%s, %w", tenantID, comp.ID, err)
 	}
 	billingMap := map[string]string{}
 	for _, vh := range vhs {
-		// competition.finished_atよりもあとの場合は、終了後に訪問したとみなして大会開催内アクセス済みとみなさない
-		if comp.FinishedAt.Valid && comp.FinishedAt.Int64 < vh.MinCreatedAt {
-			continue
-		}
 		billingMap[vh.PlayerID] = "visitor"
 	}
 
@@ -1335,21 +1331,21 @@ func competitionRankingHandler(c echo.Context) error {
 		return fmt.Errorf("error retrieveCompetition: %w", err)
 	}
 
-	now := time.Now().Unix()
 	var tenant TenantRow
 	if err := adminDB.GetContext(ctx, &tenant, "SELECT * FROM tenant WHERE id = ?", v.tenantID); err != nil {
 		return fmt.Errorf("error Select tenant: id=%d, %w", v.tenantID, err)
 	}
 
-	if _, err := adminDB.ExecContext(
-		ctx,
-		"INSERT INTO visit_history (player_id, tenant_id, competition_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-		v.playerID, tenant.ID, competitionID, now, now,
-	); err != nil {
-		return fmt.Errorf(
-			"error Insert visit_history: playerID=%s, tenantID=%d, competitionID=%s, createdAt=%d, updatedAt=%d, %w",
-			v.playerID, tenant.ID, competitionID, now, now, err,
-		)
+	if !competition.FinishedAt.Valid {
+		if _, err := adminDB.ExecContext(
+			ctx,
+			"INSERT IGNORE INTO ranking_accessed_player (tenant_id, competition_id, player_id) VALUES (?, ?, ?)",
+			tenant.ID, competitionID, v.playerID,
+		); err != nil {
+			return fmt.Errorf(
+				"error Insert ranking_accessed_player",
+			)
+		}
 	}
 
 	var rankAfter int64
@@ -1595,5 +1591,20 @@ func initializeHandler(c echo.Context) error {
 	res := InitializeHandlerResult{
 		Lang: "go",
 	}
+
+	_, err = adminDB.Exec("truncate ranking_accessed_player")
+	if err != nil {
+		return err
+	}
+
+	q := `
+		 INSERT IGNORE INTO ranking_accessed_player (tenant_id, competition_id, player_id)
+		 SELECT tenant_id, competition_id, player_id FROM visit_history GROUP BY tenant_id, competition_id, player_id
+	`
+
+	if _, err := adminDB.Exec(q); err != nil {
+		return err
+	}
+
 	return c.JSON(http.StatusOK, SuccessResult{Status: true, Data: res})
 }

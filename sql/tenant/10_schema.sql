@@ -30,3 +30,7 @@ CREATE TABLE player_score (
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL
 );
+
+INSERT INTO competition SELECT * FROM old_competition;
+INSERT INTO player SELECT * FROM old_player;
+INSERT INTO player_score  SELECT * FROM old_player_score;

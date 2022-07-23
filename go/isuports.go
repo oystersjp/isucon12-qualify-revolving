@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/felixge/fgprof"
 	"github.com/google/uuid"
 	"io"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	_ "net/http/pprof"
 )
 
 const (
@@ -121,6 +123,11 @@ func SetCacheControlPrivate(next echo.HandlerFunc) echo.HandlerFunc {
 
 // Run は cmd/isuports/main.go から呼ばれるエントリーポイントです
 func Run() {
+	http.DefaultServeMux.Handle("/debug/fgprof", fgprof.Handler())
+	go func() {
+		log.Print(http.ListenAndServe(":6060", nil))
+	}()
+
 	e := echo.New()
 	e.Debug = true
 	e.Logger.SetLevel(log.DEBUG)
@@ -1015,6 +1022,12 @@ func competitionScoreHandler(c echo.Context) error {
 	defer fl.Close()
 	var rowNum int64
 	playerScoreRows := []PlayerScoreRow{}
+	// tenantで絞ってplayerリストをとる
+	dbPlayers := []PlayerRow{}
+	if err := mysqlTenantDB.SelectContext(ctx, &dbPlayers, "SELECT * FROM player WHERE tenant_id = ?", v.tenantID); err != nil {
+		fmt.Errorf("error retrievePlayer: %w", err)
+	}
+
 	for {
 		rowNum++
 		row, err := r.Read()
@@ -1028,15 +1041,21 @@ func competitionScoreHandler(c echo.Context) error {
 			return fmt.Errorf("row must have two columns: %#v", row)
 		}
 		playerID, scoreStr := row[0], row[1]
-		if _, err := retrievePlayer(ctx, mysqlTenantDB, playerID); err != nil {
-			// 存在しない参加者が含まれている
-			if errors.Is(err, sql.ErrNoRows) {
-				return echo.NewHTTPError(
-					http.StatusBadRequest,
-					fmt.Sprintf("player not found: %s", playerID),
-				)
+		contain := false
+		// 参加者存在チェック
+		for _, dbp := range dbPlayers {
+			if dbp.ID == playerID {
+				contain = true
+				break
+
 			}
-			return fmt.Errorf("error retrievePlayer: %w", err)
+		}
+		if contain == false {
+			// 存在しない参加者が含まれている
+			return echo.NewHTTPError(
+				http.StatusBadRequest,
+				fmt.Sprintf("player not found: %s", playerID),
+			)
 		}
 		var score int64
 		if score, err = strconv.ParseInt(scoreStr, 10, 64); err != nil {

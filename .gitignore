@@ -1,0 +1,4 @@
+sqlite-trace.log
+tenant-db/*
+sql/sqlite3-to-sql
+public.pem

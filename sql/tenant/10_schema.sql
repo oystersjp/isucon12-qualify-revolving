@@ -10,6 +10,7 @@ CREATE TABLE competition (
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS c_idx_1 ON competition(id);
 
 CREATE TABLE player (
   id VARCHAR(255) NOT NULL PRIMARY KEY,
@@ -19,6 +20,7 @@ CREATE TABLE player (
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS p_idx_1 ON player(id);
 
 CREATE TABLE player_score (
   id VARCHAR(255) NOT NULL PRIMARY KEY,
@@ -30,3 +32,6 @@ CREATE TABLE player_score (
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS ps_idx_1 ON player_score(tenant_id, competition_id, player_id);
+CREATE INDEX IF NOT EXISTS ps_idx_2 ON player_score(player_id);
+CREATE INDEX IF NOT EXISTS ps_idx_3 ON player_score(id);

@@ -1249,23 +1249,26 @@ func playerHandler(c echo.Context) error {
 	}
 	defer fl.Close()
 	var psds []PlayerScoreDetail
-	for _, c := range cs {
-		ps := PlayerScoreRow{}
-		if err := tenantDB.GetContext(
-			ctx,
-			&ps,
-			// 最後にCSVに登場したスコアを採用する = row_numが一番大きいもの
-			"SELECT * FROM player_score WHERE tenant_id = ? AND competition_id = ? AND player_id = ? ORDER BY row_num DESC LIMIT 1",
-			v.tenantID,
-			c.ID,
-			p.ID,
-		); err != nil {
-			// 行がない = スコアが記録されてない
-			if errors.Is(err, sql.ErrNoRows) {
-				continue
-			}
-			return fmt.Errorf("error Select player_score: tenantID=%d, competitionID=%s, playerID=%s, %w", v.tenantID, c.ID, p.ID, err)
+	scoreRows := []PlayerScoreRow{}
+	err = tenantDB.SelectContext(
+		ctx,
+		&scoreRows,
+		"SELECT * FROM player_score WHERE tenant_id = ? AND player_id = ?",
+		v.tenantID,
+		p.ID,
+	)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+
+	}
+	// 一回欲しいplayer_score群を作るよ
+	myLatestScoreMap := make(map[string]PlayerScoreRow)
+	for _, sr := range scoreRows {
+		if myLatestScoreMap[sr.CompetitionID].RowNum < sr.RowNum {
+			myLatestScoreMap[sr.CompetitionID] = sr
 		}
+	}
+	for _, c := range cs {
+		ps := myLatestScoreMap[c.ID]
 		psds = append(psds, PlayerScoreDetail{
 			CompetitionTitle: c.Title,
 			Score:            ps.Score,

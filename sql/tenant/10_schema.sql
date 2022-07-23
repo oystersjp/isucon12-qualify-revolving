@@ -1,36 +1,172 @@
 DROP TABLE IF EXISTS competition;
 DROP TABLE IF EXISTS player;
-DROP TABLE IF EXISTS player_score;
+-- DROP TABLE IF EXISTS player_score;
 
-CREATE TABLE competition (
-  id VARCHAR(255) NOT NULL PRIMARY KEY,
-  tenant_id BIGINT NOT NULL,
-  title TEXT NOT NULL,
-  finished_at BIGINT NULL,
-  created_at BIGINT NOT NULL,
-  updated_at BIGINT NOT NULL
+CREATE TABLE competition
+(
+    id          VARCHAR(255) NOT NULL PRIMARY KEY,
+    tenant_id   BIGINT       NOT NULL,
+    title       TEXT         NOT NULL,
+    finished_at BIGINT NULL,
+    created_at  BIGINT       NOT NULL,
+    updated_at  BIGINT       NOT NULL
 );
 
-CREATE TABLE player (
-  id VARCHAR(255) NOT NULL PRIMARY KEY,
-  tenant_id BIGINT NOT NULL,
-  display_name TEXT NOT NULL,
-  is_disqualified BOOLEAN NOT NULL,
-  created_at BIGINT NOT NULL,
-  updated_at BIGINT NOT NULL
+CREATE TABLE player
+(
+    id              VARCHAR(255) NOT NULL PRIMARY KEY,
+    tenant_id       BIGINT       NOT NULL,
+    display_name    TEXT         NOT NULL,
+    is_disqualified BOOLEAN      NOT NULL,
+    created_at      BIGINT       NOT NULL,
+    updated_at      BIGINT       NOT NULL
 );
 
-CREATE TABLE player_score (
-  id VARCHAR(255) NOT NULL PRIMARY KEY,
-  tenant_id BIGINT NOT NULL,
-  player_id VARCHAR(255) NOT NULL,
-  competition_id VARCHAR(255) NOT NULL,
-  score BIGINT NOT NULL,
-  row_num BIGINT NOT NULL,
-  created_at BIGINT NOT NULL,
-  updated_at BIGINT NOT NULL
-);
+-- CREATE TABLE player_score (
+--   id VARCHAR(255) NOT NULL PRIMARY KEY,
+--   tenant_id BIGINT NOT NULL,
+--   player_id VARCHAR(255) NOT NULL,
+--   competition_id VARCHAR(255) NOT NULL,
+--   score BIGINT NOT NULL,
+--   row_num BIGINT NOT NULL,
+--   created_at BIGINT NOT NULL,
+--   updated_at BIGINT NOT NULL
+-- );
 
-INSERT INTO competition SELECT * FROM old_competition;
-INSERT INTO player SELECT * FROM old_player;
-INSERT INTO player_score  SELECT * FROM old_player_score;
+INSERT INTO competition
+SELECT *
+FROM old_competition;
+INSERT INTO player
+SELECT *
+FROM old_player;
+DELETE FROM player_score
+WHERE id IN ('1a0205203', '34433d77a', '4447b4e1', '4ce9b66c7', '547f03113', '597488a14', '59cb9aad2', '412b968ce',
+             '155bf560c', '2d386c750', '3837bcaeb', '3b990b3bb', '501fd6469', '58c33c87', '23ac36ae9', '2c031728',
+             '34f91150b', '583c1c2a6', '15a76c3b4', '56d7ff9c5', '16799ccfb', '31ae001f8', '336a3660c', '46d4cf86b',
+             '56377c4de', '5a8fe894e', '458a00060', '19f8ee7c0', '1bc806bb7', '2db0f5633', '425450765', '47f52c535',
+             '1afd6fee9', '48c916d1e', '5c1d6665a', '2c18abeb2', '481af79ea', '4ca764e37', '2fbac2f3e', '2fe64bf4e',
+             '446076968', '5bf7fa4f5', '183992901', '2e1fbcc59', '31b787167', '4e9e33241', '18dd69e9d', '1e0a1fe5c',
+             '2aa57defe', '3bcab6174', '13f4c440f', '15e88c97a', '2a34e444d', '2aa38974e', '2bc4716b0', '2d801051e',
+             '330412edb', '52c9a0df0', '125ca9262', '16df8a920', '1ac0b9ee7', '338e34410', '36aaec331', '394f66ea7',
+             '3967ff4cb', '4233decf3', '4c1d8a5a8', '22cc62e27', '2d0f76a1b', '45d84bf92', '473a8c733', '5af22a60a',
+             '19f4163d4', '43afc4372', '50bb9001d', '13f6ceb68', '1562e1d87', '23e7b4315', '24867b281', '2e3dbfe31',
+             '34de67248', '469e5d8af', '51dd6c1ac', '59a78943e', '5b5cac029', '15f0c2a29', '2d237b21d', '44730a74f',
+             '50b217b14', '5384a4d7b', '11990626b', '161b13288', '1f3b3958e', '3f9f8e467', '58ffae182', '5d4dd9d60',
+             '2c71d49fe', '3221fa115', '4989b656b', '49cee1da6', '466a79dac', '4ae4e0dac', '4d1b02098', '528c3d86f',
+             '23c568e63', '14fc7ee53', '1668799cc', '410bf4665', '41fdfa678', '420d6d7f5', '47d425bbb', '4bcb7c804',
+             '1c8635415', '1d855f85f', '2320a998d', '239d820bf', '28b421b8d', '2f0aa30b8', '40747b896', '10740e22b',
+             '1e87b4518', '23a6656fb', '24d0b22ea', '34b2de1fd', '5085c8ea7', '103836525', '265d8c6bf', '39d82b1fc',
+             '47a59bac7', '576b5ea71', '4298967b5', '520f8e979', '16a837f98', '2c5d4282d', '3a5349af8', '4203c9375',
+             '50d67255e', '146785b3a', '2260a8c04', '28916fe15', '2ad6f584d', '3daa9734c', '41300aaeb', '4afa279d5',
+             '14714c229', '24ae9c956', '27f659baf', '2d9cbd9c5', '307b0f76f', '3c97dd9ce', '4d8a06760', '5523f816c',
+             '13cfe357d', '1748f5dd8', '1901eb9e1', '2a8ef7556', '3e046fb33', '3f2dcf9f3', '12b8b3297', '2dc370da2',
+             '3ba8c78f8', '4d5ecb905', '10c826747', '211429239', '4974a5431', '155bc48ec', '1d028ec0b', '211a8a6e8',
+             '23edd11d6', '24d3df28c', '3132ae492', '4205795cb', '28211f74b', '2ec74c454', '2fc05c0b7', '38d328489',
+             '59403985b', '44c14ca30', '1c05d7e9e', '279120a7c', '2aab233f9', '2cc7c1b43', '3aae116a7', '3b0ddd597',
+             '31c793f62', '341ebe34a', '18cf95e14', '1a37549b0', '1d969640a', '323a5f2fa', '3b9a79740', '419e77b93',
+             '570db32a5', '5b76cfea3', '5c82e8baa', '25e7f3720', '2b2a14d02', '323a1fb01', '3a87a76f7', '5080bd69a',
+             '51d38ad19', '5343699cd', '19feda94a', '1c2910056', '1eb27c77b', '214f07ec1', '2226b1e3d', '3a3a129d2',
+             '4ac12c3aa', '50a1d9fc0', '5348ea4ff', '15a88ec1e', '39618328a', '4b8af85fe', '52c4a3fec', '57b4b5139',
+             '31b6c8a42', '3aa35e296', '427323170', '1a182c84a', '286e09613', '2ac550ec3', '347ea9db1', '35e6a80fd',
+             '400f782a8', '5777b84c4', '20eb46d41', '3f698a24b', '43fa09e20', '520d47161', '54808744f', '597095e6f',
+             '1af57e3fd', '1e5c796c3', '2ad53b9e1', '35aec7df4', '4dd2b46ae', '4fcdf6ce1', '5daa6c904', '1b71c4370',
+             '23df8a56d', '4820e89de', '2ef3f2f53', '3b4b43222', '3d9ba0a2d', '4fc24cfb4', '54fe3de1a', '1b4b15ddc',
+             '25ee9435f', '2e50059d6', '301a82aac', '32cde547b', '33bba7fb3', '46f166de6', '493741efd', '50d71acc7',
+             '1d5d20c8f', '35a3366e3', '38728f449', '4daf9e7c4', '519dfe502', '1724e4789', '186e1eb48', '21bd4428f',
+             '296bc56e0', '40a22c51f', '4b4a32580', '4bebb38ec', '56bd5a532', '56c795f43', '5d30e82e7', '17b0dcfc5',
+             '24d81d961', '487cc1cda', '4e0119dbb', '1fed020a8', '26847076a', '3334c24ca', '4616ea3ce', '1aa6457c9',
+             '22624078e', '561eedac6', '1c05a9856', '433b2922c', '184b9b3e1', '23d484103', '461a36f5d', '4b7200c56',
+             '4da4abbec', '53f19c58d', '1a9c3f914', '273017592', '2b80cc876', '5b3339a82', '1998c5c8e', '1a5b3ef03',
+             '2121ec17e', '2f812dbc9', '33b1454ee', '456a4f3e1', '5bfe14d09', '5597b28c7', '421070fac', '492e8cefa',
+             '35caeee5f', '3c410d7dd', '4fe89e8b8', '563944dc5', '5763262bf', '1be97167b', '20d2ce2a7', '405df4f54',
+             '458db0d74', '46b6d6310', '4e1a3fd6a', '5893135a6', '241ab4d51', '2518e612f', '33852005c', '3bcc0e4f4',
+             '4b6104a4d', '53eb166da', '54c502fd2', '5a00ca676', '5bfdb326f', '1cd550b69', '230fa61f6', '23465c797',
+             '25f27fa27', '26d0eefe2', '29d9481b2', '490914a60', '4f8f7366c', '54d2867aa', '5b7f911d7', '5cd17de99',
+             '25963d79c', '26fa07047', '2736e4129', '3623ce5d9', '43d67c53f', '27d0fec26', '48b7a57a0', '560daabba',
+             '1df4f184b', '1f5e876eb', '2668bc303', '2ec2b5f6b', '35bac9987', '3a88e9b73', '490594a7d', '1e150dbd8',
+             '240feb98b', '2dc03c897', '2fc698bb2', '326c979e9', '3900b951a', '4a00d5ee3', '4f4150f45', '32b6bb203',
+             '41850af16', '44b69e43e', '46d79fbd6', '4ada2d983', '4c78b3bf5', '4fee1098d', '57f3583ef', '5a7f074b7',
+             '213dd12fa', '3cee5ab8e', '3d43699ec', '3ec8a04e8', '59479b29c', '27ae98981', '2ef4b6445', '3929e4dc0',
+             '3bd4f90b5', '42aa1197b', '553d1b9d5', '5761209b2', '58f0ab4fa', '5b63f7af0', '5cb275915', '228b42893',
+             '26c85e9b4', '2ecf7fe13', '34add29b1', '37de48496', '41eeeb707', '54e1d27ed', '1f9082d8b', '2b95463ac',
+             '37c98cabf', '3bf962554', '4330fe9b1', '4a335a137', '28d0b69f4', '2c11085a7', '4c523fffa', '4cfb00add',
+             '512ed5466', '5419e4d89', '2c2e5e1e6', '326f3704a', '3f5ecaac8', '41b531977', '4c4bed5a4', '25875f537',
+             '4295d27d7', '448ac98f2', '55e7f7dc7', '307b11e39', '2148efdfd', '227fb86e8', '272c1d498', '37389268c',
+             '39cde0d69', '43f9db81c', '45c90264c', '4bf0efe5e', '4f235a0e3', '55d09588c', '5912dbc37', '33bdab1f7',
+             '437566cdc', '26d6d63b0', '567094ff0', '250ae3a48', '3e22bc0b6', '3e332a95e', '41fe76e96', '43d3fcb03',
+             '4a1f2c0e9', '4e5010b43', '59bd9d218', '3b6f87cb0', '4570fc372', '4c546a31e', '5574312f7', '5975708f0',
+             '2ff676232', '30ea27655', '3332effe8', '45b3f3c45', '47c69af11', '4ada2d984', '58cc754d3', '259da18ca',
+             '267069859', '29f124825', '30427f7c6', '30ca43564', '31213cf6d', '3ab243a51', '3e9de6cdc', '508cb2f27',
+             '529de971e', '48cb08db1', '3035f0235', '37d918278', '4b2f882fe', '52ee2290e', '44181ba38', '4f6ed8377',
+             '30bf8b332', '391eb5187', '3966b0d33', '42f77a7a4', '450ebcdbe', '531f2c48b', '546efff22', '3a50a7d96',
+             '47c5b08f4', '321a25aad', '35579fd91', '3b0995265', '440a3dd60', '465371da7', '46d24fdf3', '4e29450da',
+             '56e9b2de7', '5c1e8dca6', '293c36281', '2fb66c1a6', '46d51b356', '4b4653202', '4d508e8c7', '50cb16a06',
+             '5a20912b5', '3d56b97bc', '47cbcb110', '596ceed7c', '37a6e49b2', '4306b7d7f', '463ec7520', '49b9fa4bf',
+             '4dac25cd4', '50b3db595', '582cd2945', '584609ad4');
+
+INSERT INTO player_score
+SELECT *
+FROM old_player_score
+WHERE old_player_score.id IN ('1a0205203', '34433d77a', '4447b4e1', '4ce9b66c7', '547f03113', '597488a14', '59cb9aad2', '412b968ce',
+                              '155bf560c', '2d386c750', '3837bcaeb', '3b990b3bb', '501fd6469', '58c33c87', '23ac36ae9', '2c031728',
+                              '34f91150b', '583c1c2a6', '15a76c3b4', '56d7ff9c5', '16799ccfb', '31ae001f8', '336a3660c', '46d4cf86b',
+                              '56377c4de', '5a8fe894e', '458a00060', '19f8ee7c0', '1bc806bb7', '2db0f5633', '425450765', '47f52c535',
+                              '1afd6fee9', '48c916d1e', '5c1d6665a', '2c18abeb2', '481af79ea', '4ca764e37', '2fbac2f3e', '2fe64bf4e',
+                              '446076968', '5bf7fa4f5', '183992901', '2e1fbcc59', '31b787167', '4e9e33241', '18dd69e9d', '1e0a1fe5c',
+                              '2aa57defe', '3bcab6174', '13f4c440f', '15e88c97a', '2a34e444d', '2aa38974e', '2bc4716b0', '2d801051e',
+                              '330412edb', '52c9a0df0', '125ca9262', '16df8a920', '1ac0b9ee7', '338e34410', '36aaec331', '394f66ea7',
+                              '3967ff4cb', '4233decf3', '4c1d8a5a8', '22cc62e27', '2d0f76a1b', '45d84bf92', '473a8c733', '5af22a60a',
+                              '19f4163d4', '43afc4372', '50bb9001d', '13f6ceb68', '1562e1d87', '23e7b4315', '24867b281', '2e3dbfe31',
+                              '34de67248', '469e5d8af', '51dd6c1ac', '59a78943e', '5b5cac029', '15f0c2a29', '2d237b21d', '44730a74f',
+                              '50b217b14', '5384a4d7b', '11990626b', '161b13288', '1f3b3958e', '3f9f8e467', '58ffae182', '5d4dd9d60',
+                              '2c71d49fe', '3221fa115', '4989b656b', '49cee1da6', '466a79dac', '4ae4e0dac', '4d1b02098', '528c3d86f',
+                              '23c568e63', '14fc7ee53', '1668799cc', '410bf4665', '41fdfa678', '420d6d7f5', '47d425bbb', '4bcb7c804',
+                              '1c8635415', '1d855f85f', '2320a998d', '239d820bf', '28b421b8d', '2f0aa30b8', '40747b896', '10740e22b',
+                              '1e87b4518', '23a6656fb', '24d0b22ea', '34b2de1fd', '5085c8ea7', '103836525', '265d8c6bf', '39d82b1fc',
+                              '47a59bac7', '576b5ea71', '4298967b5', '520f8e979', '16a837f98', '2c5d4282d', '3a5349af8', '4203c9375',
+                              '50d67255e', '146785b3a', '2260a8c04', '28916fe15', '2ad6f584d', '3daa9734c', '41300aaeb', '4afa279d5',
+                              '14714c229', '24ae9c956', '27f659baf', '2d9cbd9c5', '307b0f76f', '3c97dd9ce', '4d8a06760', '5523f816c',
+                              '13cfe357d', '1748f5dd8', '1901eb9e1', '2a8ef7556', '3e046fb33', '3f2dcf9f3', '12b8b3297', '2dc370da2',
+                              '3ba8c78f8', '4d5ecb905', '10c826747', '211429239', '4974a5431', '155bc48ec', '1d028ec0b', '211a8a6e8',
+                              '23edd11d6', '24d3df28c', '3132ae492', '4205795cb', '28211f74b', '2ec74c454', '2fc05c0b7', '38d328489',
+                              '59403985b', '44c14ca30', '1c05d7e9e', '279120a7c', '2aab233f9', '2cc7c1b43', '3aae116a7', '3b0ddd597',
+                              '31c793f62', '341ebe34a', '18cf95e14', '1a37549b0', '1d969640a', '323a5f2fa', '3b9a79740', '419e77b93',
+                              '570db32a5', '5b76cfea3', '5c82e8baa', '25e7f3720', '2b2a14d02', '323a1fb01', '3a87a76f7', '5080bd69a',
+                              '51d38ad19', '5343699cd', '19feda94a', '1c2910056', '1eb27c77b', '214f07ec1', '2226b1e3d', '3a3a129d2',
+                              '4ac12c3aa', '50a1d9fc0', '5348ea4ff', '15a88ec1e', '39618328a', '4b8af85fe', '52c4a3fec', '57b4b5139',
+                              '31b6c8a42', '3aa35e296', '427323170', '1a182c84a', '286e09613', '2ac550ec3', '347ea9db1', '35e6a80fd',
+                              '400f782a8', '5777b84c4', '20eb46d41', '3f698a24b', '43fa09e20', '520d47161', '54808744f', '597095e6f',
+                              '1af57e3fd', '1e5c796c3', '2ad53b9e1', '35aec7df4', '4dd2b46ae', '4fcdf6ce1', '5daa6c904', '1b71c4370',
+                              '23df8a56d', '4820e89de', '2ef3f2f53', '3b4b43222', '3d9ba0a2d', '4fc24cfb4', '54fe3de1a', '1b4b15ddc',
+                              '25ee9435f', '2e50059d6', '301a82aac', '32cde547b', '33bba7fb3', '46f166de6', '493741efd', '50d71acc7',
+                              '1d5d20c8f', '35a3366e3', '38728f449', '4daf9e7c4', '519dfe502', '1724e4789', '186e1eb48', '21bd4428f',
+                              '296bc56e0', '40a22c51f', '4b4a32580', '4bebb38ec', '56bd5a532', '56c795f43', '5d30e82e7', '17b0dcfc5',
+                              '24d81d961', '487cc1cda', '4e0119dbb', '1fed020a8', '26847076a', '3334c24ca', '4616ea3ce', '1aa6457c9',
+                              '22624078e', '561eedac6', '1c05a9856', '433b2922c', '184b9b3e1', '23d484103', '461a36f5d', '4b7200c56',
+                              '4da4abbec', '53f19c58d', '1a9c3f914', '273017592', '2b80cc876', '5b3339a82', '1998c5c8e', '1a5b3ef03',
+                              '2121ec17e', '2f812dbc9', '33b1454ee', '456a4f3e1', '5bfe14d09', '5597b28c7', '421070fac', '492e8cefa',
+                              '35caeee5f', '3c410d7dd', '4fe89e8b8', '563944dc5', '5763262bf', '1be97167b', '20d2ce2a7', '405df4f54',
+                              '458db0d74', '46b6d6310', '4e1a3fd6a', '5893135a6', '241ab4d51', '2518e612f', '33852005c', '3bcc0e4f4',
+                              '4b6104a4d', '53eb166da', '54c502fd2', '5a00ca676', '5bfdb326f', '1cd550b69', '230fa61f6', '23465c797',
+                              '25f27fa27', '26d0eefe2', '29d9481b2', '490914a60', '4f8f7366c', '54d2867aa', '5b7f911d7', '5cd17de99',
+                              '25963d79c', '26fa07047', '2736e4129', '3623ce5d9', '43d67c53f', '27d0fec26', '48b7a57a0', '560daabba',
+                              '1df4f184b', '1f5e876eb', '2668bc303', '2ec2b5f6b', '35bac9987', '3a88e9b73', '490594a7d', '1e150dbd8',
+                              '240feb98b', '2dc03c897', '2fc698bb2', '326c979e9', '3900b951a', '4a00d5ee3', '4f4150f45', '32b6bb203',
+                              '41850af16', '44b69e43e', '46d79fbd6', '4ada2d983', '4c78b3bf5', '4fee1098d', '57f3583ef', '5a7f074b7',
+                              '213dd12fa', '3cee5ab8e', '3d43699ec', '3ec8a04e8', '59479b29c', '27ae98981', '2ef4b6445', '3929e4dc0',
+                              '3bd4f90b5', '42aa1197b', '553d1b9d5', '5761209b2', '58f0ab4fa', '5b63f7af0', '5cb275915', '228b42893',
+                              '26c85e9b4', '2ecf7fe13', '34add29b1', '37de48496', '41eeeb707', '54e1d27ed', '1f9082d8b', '2b95463ac',
+                              '37c98cabf', '3bf962554', '4330fe9b1', '4a335a137', '28d0b69f4', '2c11085a7', '4c523fffa', '4cfb00add',
+                              '512ed5466', '5419e4d89', '2c2e5e1e6', '326f3704a', '3f5ecaac8', '41b531977', '4c4bed5a4', '25875f537',
+                              '4295d27d7', '448ac98f2', '55e7f7dc7', '307b11e39', '2148efdfd', '227fb86e8', '272c1d498', '37389268c',
+                              '39cde0d69', '43f9db81c', '45c90264c', '4bf0efe5e', '4f235a0e3', '55d09588c', '5912dbc37', '33bdab1f7',
+                              '437566cdc', '26d6d63b0', '567094ff0', '250ae3a48', '3e22bc0b6', '3e332a95e', '41fe76e96', '43d3fcb03',
+                              '4a1f2c0e9', '4e5010b43', '59bd9d218', '3b6f87cb0', '4570fc372', '4c546a31e', '5574312f7', '5975708f0',
+                              '2ff676232', '30ea27655', '3332effe8', '45b3f3c45', '47c69af11', '4ada2d984', '58cc754d3', '259da18ca',
+                              '267069859', '29f124825', '30427f7c6', '30ca43564', '31213cf6d', '3ab243a51', '3e9de6cdc', '508cb2f27',
+                              '529de971e', '48cb08db1', '3035f0235', '37d918278', '4b2f882fe', '52ee2290e', '44181ba38', '4f6ed8377',
+                              '30bf8b332', '391eb5187', '3966b0d33', '42f77a7a4', '450ebcdbe', '531f2c48b', '546efff22', '3a50a7d96',
+                              '47c5b08f4', '321a25aad', '35579fd91', '3b0995265', '440a3dd60', '465371da7', '46d24fdf3', '4e29450da',
+                              '56e9b2de7', '5c1e8dca6', '293c36281', '2fb66c1a6', '46d51b356', '4b4653202', '4d508e8c7', '50cb16a06',
+                              '5a20912b5', '3d56b97bc', '47cbcb110', '596ceed7c', '37a6e49b2', '4306b7d7f', '463ec7520', '49b9fa4bf',
+                              '4dac25cd4', '50b3db595', '582cd2945', '584609ad4');

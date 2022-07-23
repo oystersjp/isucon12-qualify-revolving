@@ -1049,7 +1049,7 @@ func competitionScoreHandler(c echo.Context) error {
 	playerScoreRows := []PlayerScoreRow{}
 	// tenantで絞ってplayerリストをとる
 	dbPlayers := []PlayerRow{}
-	if err := tenantDB.GetContext(ctx, &dbPlayers, "SELECT * FROM player"); err != nil {
+	if err := tenantDB.SelectContext(ctx, &dbPlayers, "SELECT * FROM player WHERE tenant_id = ?", v.tenantID); err != nil {
 		fmt.Errorf("error retrievePlayer: %w", err)
 	}
 

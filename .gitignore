@@ -3,3 +3,4 @@ tenant-db/*
 sql/sqlite3-to-sql
 public.pem
 kataribe
+go/isuports

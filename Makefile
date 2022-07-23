@@ -1,6 +1,6 @@
 .PHONY: *
 
-gogo: stop-services build truncate-logs start-services kataribe
+gogo: stop-services build truncate-logs start-services
 
 build:
 	cd go && make isuports

@@ -171,4 +171,4 @@ WHERE old_player_score.competition_id IN ('1a0205203', '34433d77a', '4447b4e1', 
                               '5a20912b5', '3d56b97bc', '47cbcb110', '596ceed7c', '37a6e49b2', '4306b7d7f', '463ec7520', '49b9fa4bf',
                               '4dac25cd4', '50b3db595', '582cd2945', '584609ad4');
 
-CREATE INDEX idx_tenant_id_competition_id ON player_score (tenant_id, competition_id);
+CREATE INDEX idx_tenant_id_competition_id ON player_score (tenant_id);

@@ -1076,13 +1076,10 @@ func competitionScoreHandler(c echo.Context) error {
 		}
 		if contain == false {
 			// 存在しない参加者が含まれている
-			if errors.Is(err, sql.ErrNoRows) {
-				return echo.NewHTTPError(
-					http.StatusBadRequest,
-					fmt.Sprintf("player not found: %s", playerID),
-				)
-			}
-			return fmt.Errorf("error retrievePlayer: %w", err)
+			return echo.NewHTTPError(
+				http.StatusBadRequest,
+				fmt.Sprintf("player not found: %s", playerID),
+			)
 		}
 		var score int64
 		if score, err = strconv.ParseInt(scoreStr, 10, 64); err != nil {

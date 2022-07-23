@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -410,18 +409,6 @@ type PlayerScoreRow struct {
 	RowNum        int64  `db:"row_num"`
 	CreatedAt     int64  `db:"created_at"`
 	UpdatedAt     int64  `db:"updated_at"`
-}
-
-type PlayerScoreRowAndDispName struct {
-	TenantID      int64  `db:"tenant_id"`
-	ID            string `db:"id"`
-	PlayerID      string `db:"player_id"`
-	CompetitionID string `db:"competition_id"`
-	Score         int64  `db:"score"`
-	RowNum        int64  `db:"row_num"`
-	CreatedAt     int64  `db:"created_at"`
-	UpdatedAt     int64  `db:"updated_at"`
-	DisplayName   string `db:"display_name"`
 }
 
 // 排他ロックのためのファイル名を生成する
@@ -1299,10 +1286,10 @@ func playerHandler(c echo.Context) error {
 }
 
 type CompetitionRank struct {
-	Rank              int64  `json:"rank"`
-	Score             int64  `json:"score"`
-	PlayerID          string `json:"player_id"`
-	PlayerDisplayName string `json:"player_display_name"`
+	Rank              int64  `db:"rank" json:"rank"`
+	Score             int64  `db:"score" json:"score"`
+	PlayerID          string `db:"player_id" json:"player_id"`
+	PlayerDisplayName string `db:"player_display_name" json:"player_display_name"`
 	RowNum            int64  `json:"-"` // APIレスポンスのJSONには含まれない
 }
 
@@ -1373,58 +1360,40 @@ func competitionRankingHandler(c echo.Context) error {
 		}
 	}
 
+	q := `
+		SELECT player_score.score,
+			   player.id AS player_id,
+			   player.display_name AS player_display_name
+		FROM player_score
+		INNER JOIN player ON player_score.player_id = player.id
+		WHERE player_score.tenant_id = ?
+		  AND player_score.competition_id = ?
+		ORDER BY player_score.score DESC,
+				 player_score.row_num ASC
+		LIMIT ? OFFSET ?;
+	`
+
 	// player_scoreを読んでいるときに更新が走ると不整合が起こるのでロックを取得する
 	fl, err := flockByTenantID(v.tenantID)
 	if err != nil {
 		return fmt.Errorf("error flockByTenantID: %w", err)
 	}
 	defer fl.Close()
-	pssd := []PlayerScoreRowAndDispName{}
+	ranks := []CompetitionRank{}
 	if err := tenantDB.SelectContext(
 		ctx,
-		&pssd,
-		"SELECT player_score.*, player.display_name FROM player_score INNER JOIN player ON player_score.player_id = player.id WHERE player_score.tenant_id = ? AND player_score.competition_id = ? ORDER BY player_score.row_num DESC",
+		&ranks,
+		q,
 		tenant.ID,
 		competitionID,
+		100,       // limit
+		rankAfter, // offset
 	); err != nil {
 		return fmt.Errorf("error Select player_score: tenantID=%d, competitionID=%s, %w", tenant.ID, competitionID, err)
 	}
-	ranks := make([]CompetitionRank, 0, len(pssd))
-	scoredPlayerSet := make(map[string]struct{}, len(pssd))
-	for _, ps := range pssd {
-		// player_scoreが同一player_id内ではrow_numの降順でソートされているので
-		// 現れたのが2回目以降のplayer_idはより大きいrow_numでスコアが出ているとみなせる
-		if _, ok := scoredPlayerSet[ps.PlayerID]; ok {
-			continue
-		}
-		scoredPlayerSet[ps.PlayerID] = struct{}{}
-		ranks = append(ranks, CompetitionRank{
-			Score:             ps.Score,
-			PlayerID:          ps.PlayerID,
-			PlayerDisplayName: ps.DisplayName,
-			RowNum:            ps.RowNum,
-		})
-	}
-	sort.Slice(ranks, func(i, j int) bool {
-		if ranks[i].Score == ranks[j].Score {
-			return ranks[i].RowNum < ranks[j].RowNum
-		}
-		return ranks[i].Score > ranks[j].Score
-	})
-	pagedRanks := make([]CompetitionRank, 0, 100)
-	for i, rank := range ranks {
-		if int64(i) < rankAfter {
-			continue
-		}
-		pagedRanks = append(pagedRanks, CompetitionRank{
-			Rank:              int64(i + 1),
-			Score:             rank.Score,
-			PlayerID:          rank.PlayerID,
-			PlayerDisplayName: rank.PlayerDisplayName,
-		})
-		if len(pagedRanks) >= 100 {
-			break
-		}
+	for i, r := range ranks {
+		r.Rank = rankAfter + int64(i) + 1
+		ranks[i] = r
 	}
 
 	res := SuccessResult{
@@ -1435,7 +1404,7 @@ func competitionRankingHandler(c echo.Context) error {
 				Title:      competition.Title,
 				IsFinished: competition.FinishedAt.Valid,
 			},
-			Ranks: pagedRanks,
+			Ranks: ranks,
 		},
 	}
 	return c.JSON(http.StatusOK, res)

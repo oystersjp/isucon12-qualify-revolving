@@ -88,39 +88,28 @@ duration_index = 10
 # For overview of regexp syntax: https://golang.org/pkg/regexp/syntax/
 #
 [[bundle]]
-regexp = 'GET /api/player/player/[0-9a-f]+'
+regexp = 'GET /api/player/player/[0-9a-f-]+'
 name = 'GET /api/player/player/{small-uuid}'
 
-[[bundle]]
-regexp = 'GET /api/player/competition/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/ranking'
-name = 'GET /api/player/competition/{uuid}/ranking'
 
 [[bundle]]
- regexp = 'GET /api/player/competition/[0-9a-f]+/ranking'
- name = 'GET /api/player/competition/{small-uuid}/ranking'
+ regexp = 'GET /api/player/competition/[0-9a-f-]+/ranking'
+ name = 'GET /api/player/competition/{uuid}/ranking'
 
 [[bundle]]
 regexp = 'GET /api/admin/tenants/billing\?before=[0-9]+'
 name = 'GET /api/admin/tenants/billing?before=[0-9]+'
 
 [[bundle]]
-regexp = 'POST /api/organizer/competition/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/score'
+regexp = 'POST /api/organizer/competition/[0-9a-f-]+/score'
 name = 'POST /api/organizer/competition/{uuid}/score'
 
 [[bundle]]
-regexp = 'POST /api/organizer/competition/[0-9a-f]+/score'
-name = 'POST /api/organizer/competition/{small-uuid}/score'
-
-[[bundle]]
-regexp = 'POST /api/organizer/competition/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/finish'
+regexp = 'POST /api/organizer/competition/[0-9a-f-]+/finish'
 name = 'POST /api/organizer/competition/{uuid}/finish'
 
 [[bundle]]
-regexp = 'POST /api/organizer/competition/[0-9a-f]+/finish'
-name = 'POST /api/organizer/competition/{small-uuid}/finish'
-
-[[bundle]]
-regexp = 'POST /api/organizer/player/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/disqualified'
+regexp = 'POST /api/organizer/player/[0-9a-f-]+/disqualified'
 name = 'POST /api/organizer/player/{uuid}/disqualified'
 
 ################################################################################

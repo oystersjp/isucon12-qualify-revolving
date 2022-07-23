@@ -1261,10 +1261,9 @@ func playerHandler(c echo.Context) error {
 
 	}
 	// 一回欲しいplayer_score群を作るよ
-	// 最新から並んでるので最初入ればそれでいい
 	myLatestScoreMap := make(map[string]PlayerScoreRow)
 	for _, sr := range scoreRows {
-		if myLatestScoreMap[sr.CompetitionID].CreatedAt != 0 {
+		if myLatestScoreMap[sr.CompetitionID].RowNum < sr.RowNum {
 			myLatestScoreMap[sr.CompetitionID] = sr
 		}
 	}

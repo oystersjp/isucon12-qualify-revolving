@@ -417,15 +417,10 @@ type PlayerScoreRowAndDispName struct {
 	DisplayName   string `db:"display_name"`
 }
 
-// 排他ロックのためのファイル名を生成する
-func lockFilePath(id int64) string {
-	tenantDBDir := getEnv("ISUCON_TENANT_DB_DIR", "../tenant_db")
-	return filepath.Join(tenantDBDir, fmt.Sprintf("%d.lock", id))
-}
-
 // 排他ロックする
-func flockByTenantID(tenantID int64) (io.Closer, error) {
-	p := lockFilePath(tenantID)
+func flockById(id string) (io.Closer, error) {
+	tenantDBDir := getEnv("ISUCON_TENANT_DB_DIR", "../tenant_db")
+	p := filepath.Join(tenantDBDir, fmt.Sprintf("%s.lock", id))
 
 	fl := flock.New(p)
 	if err := fl.Lock(); err != nil {
@@ -561,11 +556,10 @@ func billingReportByCompetition(ctx context.Context, tenantDB dbOrTx, tenantID i
 	}
 
 	// player_scoreを読んでいるときに更新が走ると不整合が起こるのでロックを取得する
-	fl, err := flockByTenantID(tenantID)
+	fl, err := flockById(comp.ID)
 	if err != nil {
-		return nil, fmt.Errorf("error flockByTenantID: %w", err)
+		return nil, fmt.Errorf("error flockById: %w", err)
 	}
-	defer fl.Close()
 
 	// スコアを登録した参加者のIDを取得する
 	scoredPlayerIDs := []string{}
@@ -577,6 +571,8 @@ func billingReportByCompetition(ctx context.Context, tenantDB dbOrTx, tenantID i
 	); err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("error Select count player_score: tenantID=%d, competitionID=%s, %w", tenantID, competitonID, err)
 	}
+	fl.Close()
+
 	for _, pid := range scoredPlayerIDs {
 		// スコアが登録されている参加者
 		billingMap[pid] = "player"
@@ -1040,9 +1036,9 @@ func competitionScoreHandler(c echo.Context) error {
 	}
 
 	// / DELETEしたタイミングで参照が来ると空っぽのランキングになるのでロックする
-	fl, err := flockByTenantID(v.tenantID)
+	fl, err := flockById(comp.ID)
 	if err != nil {
-		return fmt.Errorf("error flockByTenantID: %w", err)
+		return fmt.Errorf("error flockById: %w", err)
 	}
 	defer fl.Close()
 	var rowNum int64
@@ -1227,15 +1223,14 @@ func playerHandler(c echo.Context) error {
 		return fmt.Errorf("error Select competition: %w", err)
 	}
 
-	// player_scoreを読んでいるときに更新が走ると不整合が起こるのでロックを取得する
-	fl, err := flockByTenantID(v.tenantID)
-	if err != nil {
-		return fmt.Errorf("error flockByTenantID: %w", err)
-	}
-	defer fl.Close()
 	pss := make([]PlayerScoreRow, 0, len(cs))
 	for _, c := range cs {
 		ps := PlayerScoreRow{}
+		// player_scoreを読んでいるときに更新が走ると不整合が起こるのでロックを取得する
+		fl, err := flockById(c.ID)
+		if err != nil {
+			return fmt.Errorf("error flockById: %w", err)
+		}
 		if err := tenantDB.GetContext(
 			ctx,
 			&ps,
@@ -1251,6 +1246,7 @@ func playerHandler(c echo.Context) error {
 			}
 			return fmt.Errorf("error Select player_score: tenantID=%d, competitionID=%s, playerID=%s, %w", v.tenantID, c.ID, p.ID, err)
 		}
+		fl.Close()
 		pss = append(pss, ps)
 	}
 
@@ -1356,11 +1352,10 @@ func competitionRankingHandler(c echo.Context) error {
 	}
 
 	// player_scoreを読んでいるときに更新が走ると不整合が起こるのでロックを取得する
-	fl, err := flockByTenantID(v.tenantID)
+	fl, err := flockById(competition.ID)
 	if err != nil {
-		return fmt.Errorf("error flockByTenantID: %w", err)
+		return fmt.Errorf("error flockById: %w", err)
 	}
-	defer fl.Close()
 	pssd := []PlayerScoreRowAndDispName{}
 	if err := tenantDB.SelectContext(
 		ctx,
@@ -1371,6 +1366,8 @@ func competitionRankingHandler(c echo.Context) error {
 	); err != nil {
 		return fmt.Errorf("error Select player_score: tenantID=%d, competitionID=%s, %w", tenant.ID, competitionID, err)
 	}
+	fl.Close()
+
 	ranks := make([]CompetitionRank, 0, len(pssd))
 	scoredPlayerSet := make(map[string]struct{}, len(pssd))
 	for _, ps := range pssd {

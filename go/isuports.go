@@ -45,7 +45,8 @@ var (
 	// 正しいテナント名の正規表現
 	tenantNameRegexp = regexp.MustCompile(`^[a-z][a-z0-9-]{0,61}[a-z0-9]$`)
 
-	adminDB *sqlx.DB
+	adminDB       *sqlx.DB
+	mysqlTenantDB *sqlx.DB
 
 	sqliteDriverName = "sqlite3"
 )
@@ -60,6 +61,21 @@ func getEnv(key string, defaultValue string) string {
 
 // 管理用DBに接続する
 func connectAdminDB() (*sqlx.DB, error) {
+	config := mysql.NewConfig()
+	config.Net = "tcp"
+	config.Addr = getEnv("ISUCON_DB_HOST", "127.0.0.1") + ":" + getEnv("ISUCON_DB_PORT", "3306")
+	config.User = getEnv("ISUCON_DB_USER", "isucon")
+	config.Passwd = getEnv("ISUCON_DB_PASSWORD", "isucon")
+	config.DBName = getEnv("ISUCON_DB_NAME", "isuports")
+	config.ParseTime = true
+	config.InterpolateParams = true
+
+	dsn := config.FormatDSN()
+	return sqlx.Open("mysql", dsn)
+}
+
+// 管理用DBに接続する
+func connectTenantDb() (*sqlx.DB, error) {
 	config := mysql.NewConfig()
 	config.Net = "tcp"
 	config.Addr = getEnv("ISUCON_DB_HOST", "127.0.0.1") + ":" + getEnv("ISUCON_DB_PORT", "3306")
@@ -175,6 +191,16 @@ func Run() {
 	adminDB.SetMaxOpenConns(100)
 	adminDB.SetConnMaxLifetime(120 * time.Second)
 	defer adminDB.Close()
+
+	mysqlTenantDB, err = connectTenantDb()
+	if err != nil {
+		e.Logger.Fatalf("failed to connect db: %v", err)
+		return
+	}
+	mysqlTenantDB.SetMaxIdleConns(100)
+	mysqlTenantDB.SetMaxOpenConns(100)
+	mysqlTenantDB.SetConnMaxLifetime(120 * time.Second)
+	defer mysqlTenantDB.Close()
 
 	port := getEnv("SERVER_APP_PORT", "3000")
 	e.Logger.Infof("starting isuports server on : %s ...", port)

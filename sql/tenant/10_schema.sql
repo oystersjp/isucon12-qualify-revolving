@@ -30,5 +30,5 @@ CREATE TABLE player_score (
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL
 );
-
 CREATE INDEX IF NOT EXISTS ps_idx_1 ON player_score(tenant_id, competition_id, player_id);
+CREATE INDEX IF NOT EXISTS ps_idx_2 ON player_score(player_id);

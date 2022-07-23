@@ -1048,8 +1048,8 @@ func competitionScoreHandler(c echo.Context) error {
 	var rowNum int64
 	playerScoreRows := []PlayerScoreRow{}
 	// tenantで絞ってplayerリストをとる
-	dbPlayerIds := []string{}
-	if err := tenantDB.GetContext(ctx, &dbPlayerIds, "SELECT id FROM player WHERE tenant_id = ?", v.tenantID); err != nil {
+	dbPlayers := []PlayerRow{}
+	if err := tenantDB.GetContext(ctx, &dbPlayers, "SELECT * FROM player WHERE tenant_id = ?", v.tenantID); err != nil {
 		fmt.Errorf("error retrievePlayer: %w", err)
 	}
 
@@ -1068,8 +1068,8 @@ func competitionScoreHandler(c echo.Context) error {
 		playerID, scoreStr := row[0], row[1]
 		contain := false
 		// 参加者存在チェック
-		for _, dbId := range dbPlayerIds {
-			if dbId == playerID {
+		for _, dbp := range dbPlayers {
+			if dbp.ID == playerID {
 				contain = true
 				break
 			}

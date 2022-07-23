@@ -420,11 +420,16 @@ func lockFilePath(id int64) string {
 // 排他ロックする
 func flockByTenantID(tenantID int64) (io.Closer, error) {
 	p := lockFilePath(tenantID)
-
+	var attemptNum int
 	fl := flock.New(p)
-	if err := fl.Lock(); err != nil {
-		return nil, fmt.Errorf("error flock.Lock: path=%s, %w", p, err)
+	for {
+		attemptNum++
+		if err := fl.Lock(); err != nil && attemptNum > 4 {
+			return nil, fmt.Errorf("error flock.Lock: path=%s, %w", p, err)
+		}
+		time.Sleep(300 * time.Millisecond)
 	}
+
 	return fl, nil
 }
 

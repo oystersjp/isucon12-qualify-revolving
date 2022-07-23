@@ -21,7 +21,7 @@ mysql -u"$ISUCON_DB_USER" \
     -p"$ISUCON_DB_PASSWORD" \
     --host "$ISUCON_DB_HOST" \
     --port "$ISUCON_DB_PORT" \
-    "$ISUCON_DB_NAME" < tenantinit/99_tenant.sql.gz
+    "$ISUCON_DB_NAME" < tenant/99_tenant.sql.gz
 
 # SQLiteのデータベースを初期化
 rm -f ../tenant_db/*.db

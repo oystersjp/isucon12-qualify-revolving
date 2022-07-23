@@ -1,9 +1,6 @@
 .PHONY: *
 
-gogo: stop-services build truncate-logs start-services
-
-build:
-	cd go && make isuports
+gogo: stop-services truncate-logs start-services
 
 stop-services:
 	sudo systemctl stop nginx

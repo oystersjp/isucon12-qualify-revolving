@@ -548,7 +548,6 @@ func billingReportByCompetition(ctx context.Context, tenantDB *sqlx.Tx, tenantID
 		tenantID,
 		comp.ID,
 	); err != nil && err != sql.ErrNoRows {
-		tenantDB.Rollback()
 		return nil, fmt.Errorf("error Select ranking_accessed_player: tenantID=%d, competitionID=%s, %w", tenantID, comp.ID, err)
 	}
 	billingMap := map[string]string{}

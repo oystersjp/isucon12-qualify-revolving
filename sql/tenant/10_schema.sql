@@ -35,12 +35,10 @@ CREATE TABLE player_score (
 
 INSERT INTO competition
 SELECT *
-FROM old_competition;
+FROM insert_competition;
 INSERT INTO player
 SELECT *
-FROM old_player;
+FROM insert_player;
 
-DROP INDEX idx_tenant_id_competition_id ON player_score;
-DELETE FROM player_score;
 INSERT INTO player_score SELECT * FROM insert_player_score;
 CREATE INDEX idx_tenant_id_competition_id ON player_score (tenant_id);

@@ -1073,6 +1073,7 @@ func competitionScoreHandler(c echo.Context) error {
 		"INSERT INTO player_score (id, tenant_id, player_id, competition_id, score, row_num, created_at, updated_at) VALUES (:id, :tenant_id, :player_id, :competition_id, :score, :row_num, :created_at, :updated_at)",
 		playerScoreRows,
 	); err != nil {
+		tx.Rollback()
 		return fmt.Errorf("error")
 	}
 	tx.Commit()

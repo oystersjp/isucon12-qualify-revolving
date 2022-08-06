@@ -520,7 +520,7 @@ type VisitHistorySummaryRow struct {
 }
 
 // 大会ごとの課金レポートを計算する
-func billingReportByCompetition(ctx context.Context, tenantDB dbOrTx, tenantID int64, competitonID string) (*BillingReport, error) {
+func billingReportByCompetition(ctx context.Context, tenantDB *sqlx.Tx, tenantID int64, competitonID string) (*BillingReport, error) {
 	comp, err := retrieveCompetition(ctx, tenantDB, competitonID)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieveCompetition: %w", err)
@@ -645,6 +645,7 @@ func tenantsBillingHandler(c echo.Context) error {
 	if err := adminDB.SelectContext(ctx, &ts, "SELECT * FROM tenant ORDER BY id DESC"); err != nil {
 		return fmt.Errorf("error Select tenant: %w", err)
 	}
+	tx := mysqlTenantDB.MustBegin()
 	tenantBillings := make([]TenantWithBilling, 0, len(ts))
 	for _, t := range ts {
 		if beforeID != 0 && beforeID <= t.ID {
@@ -658,7 +659,7 @@ func tenantsBillingHandler(c echo.Context) error {
 			}
 
 			cs := []CompetitionRow{}
-			if err := mysqlTenantDB.SelectContext(
+			if err := tx.SelectContext(
 				ctx,
 				&cs,
 				"SELECT * FROM competition WHERE tenant_id=?",
@@ -667,16 +668,18 @@ func tenantsBillingHandler(c echo.Context) error {
 				return fmt.Errorf("failed to Select competition: %w", err)
 			}
 			for _, comp := range cs {
-				report, err := billingReportByCompetition(ctx, mysqlTenantDB, t.ID, comp.ID)
+				report, err := billingReportByCompetition(ctx, tx, t.ID, comp.ID)
 				if err != nil {
 					return fmt.Errorf("failed to billingReportByCompetition: %w", err)
 				}
 				tb.BillingYen += report.BillingYen
 			}
+
 			tenantBillings = append(tenantBillings, tb)
 			return nil
 		}(t)
 		if err != nil {
+			tx.Rollback()
 			return err
 		}
 		if len(tenantBillings) >= 10 {

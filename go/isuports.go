@@ -670,7 +670,6 @@ func tenantsBillingHandler(c echo.Context) error {
 			for _, comp := range cs {
 				report, err := billingReportByCompetition(ctx, tx, t.ID, comp.ID)
 				if err != nil {
-					tx.Rollback()
 					return fmt.Errorf("failed to billingReportByCompetition: %w", err)
 				}
 				tb.BillingYen += report.BillingYen
@@ -1012,6 +1011,7 @@ func competitionScoreHandler(c echo.Context) error {
 			return fmt.Errorf("error r.Read at rows: %w", err)
 		}
 		if len(row) != 2 {
+			tx.Rollback()
 			return fmt.Errorf("row must have two columns: %#v", row)
 		}
 		playerID, scoreStr := row[0], row[1]
@@ -1026,6 +1026,7 @@ func competitionScoreHandler(c echo.Context) error {
 		}
 		if contain == false {
 			// 存在しない参加者が含まれている
+			tx.Rollback()
 			return echo.NewHTTPError(
 				http.StatusBadRequest,
 				fmt.Sprintf("player not found: %s", playerID),
@@ -1033,6 +1034,7 @@ func competitionScoreHandler(c echo.Context) error {
 		}
 		var score int64
 		if score, err = strconv.ParseInt(scoreStr, 10, 64); err != nil {
+			tx.Rollback()
 			return echo.NewHTTPError(
 				http.StatusBadRequest,
 				fmt.Sprintf("error strconv.ParseUint: scoreStr=%s, %s", scoreStr, err),
@@ -1056,7 +1058,7 @@ func competitionScoreHandler(c echo.Context) error {
 		})
 	}
 
-	if _, err := mysqlTenantDB.ExecContext(
+	if _, err := tx.ExecContext(
 		ctx,
 		"DELETE FROM player_score WHERE tenant_id = ? AND competition_id = ?",
 		v.tenantID,
@@ -1066,7 +1068,7 @@ func competitionScoreHandler(c echo.Context) error {
 		return fmt.Errorf("error Delete player_score: tenantID=%d, competitionID=%s, %w", v.tenantID, competitionID, err)
 	}
 	for _, ps := range playerScoreRows {
-		if _, err := mysqlTenantDB.NamedExecContext(
+		if _, err := tx.NamedExecContext(
 			ctx,
 			"INSERT INTO player_score (id, tenant_id, player_id, competition_id, score, row_num, created_at, updated_at) VALUES (:id, :tenant_id, :player_id, :competition_id, :score, :row_num, :created_at, :updated_at)",
 			ps,

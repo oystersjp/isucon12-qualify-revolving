@@ -686,6 +686,7 @@ func tenantsBillingHandler(c echo.Context) error {
 			break
 		}
 	}
+	tx.Commit()
 	return c.JSON(http.StatusOK, SuccessResult{
 		Status: true,
 		Data: TenantsBillingHandlerResult{

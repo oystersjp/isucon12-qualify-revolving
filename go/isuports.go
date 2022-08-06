@@ -46,7 +46,8 @@ var (
 	// 正しいテナント名の正規表現
 	tenantNameRegexp = regexp.MustCompile(`^[a-z][a-z0-9-]{0,61}[a-z0-9]$`)
 
-	adminDB *sqlx.DB
+	adminDB       *sqlx.DB
+	mysqlTenantDB *sqlx.DB
 
 	sqliteDriverName = "sqlite3"
 )
@@ -74,20 +75,25 @@ func connectAdminDB() (*sqlx.DB, error) {
 	return sqlx.Open("mysql", dsn)
 }
 
+// 管理用DBに接続する
+func connectTenantDb() (*sqlx.DB, error) {
+	config := mysql.NewConfig()
+	config.Net = "tcp"
+	config.Addr = getEnv("ISUCON_DB_HOST", "127.0.0.1") + ":" + getEnv("ISUCON_DB_PORT", "3306")
+	config.User = getEnv("ISUCON_DB_USER", "isucon")
+	config.Passwd = getEnv("ISUCON_DB_PASSWORD", "isucon")
+	config.DBName = getEnv("ISUCON_DB_NAME", "isuports")
+	config.ParseTime = true
+	config.InterpolateParams = true
+
+	dsn := config.FormatDSN()
+	return sqlx.Open("mysql", dsn)
+}
+
 // テナントDBのパスを返す
 func tenantDBPath(id int64) string {
 	tenantDBDir := getEnv("ISUCON_TENANT_DB_DIR", "../tenant_db")
 	return filepath.Join(tenantDBDir, fmt.Sprintf("%d.db", id))
-}
-
-// テナントDBに接続する
-func connectToTenantDB(id int64) (*sqlx.DB, error) {
-	p := tenantDBPath(id)
-	db, err := sqlx.Open(sqliteDriverName, fmt.Sprintf("file:%s?mode=rw", p))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open tenant DB: %w", err)
-	}
-	return db, nil
 }
 
 // テナントDBを新規に作成する
@@ -181,6 +187,16 @@ func Run() {
 	adminDB.SetMaxOpenConns(100)
 	adminDB.SetConnMaxLifetime(120 * time.Second)
 	defer adminDB.Close()
+
+	mysqlTenantDB, err = connectTenantDb()
+	if err != nil {
+		e.Logger.Fatalf("failed to connect db: %v", err)
+		return
+	}
+	mysqlTenantDB.SetMaxIdleConns(100)
+	mysqlTenantDB.SetMaxOpenConns(100)
+	mysqlTenantDB.SetConnMaxLifetime(120 * time.Second)
+	defer mysqlTenantDB.Close()
 
 	port := getEnv("SERVER_APP_PORT", "3000")
 	e.Logger.Infof("starting isuports server on : %s ...", port)
@@ -478,12 +494,6 @@ func tenantsAddHandler(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("error get LastInsertId: %w", err)
 	}
-	// NOTE: 先にadminDBに書き込まれることでこのAPIの処理中に
-	//       /api/admin/tenants/billingにアクセスされるとエラーになりそう
-	//       ロックなどで対処したほうが良さそう
-	if err := createTenantDB(id); err != nil {
-		return fmt.Errorf("error createTenantDB: id=%d name=%s %w", id, name, err)
-	}
 
 	res := TenantsAddHandlerResult{
 		Tenant: TenantWithBilling{
@@ -671,13 +681,9 @@ func tenantsBillingHandler(c echo.Context) error {
 				Name:        t.Name,
 				DisplayName: t.DisplayName,
 			}
-			tenantDB, err := connectToTenantDB(t.ID)
-			if err != nil {
-				return fmt.Errorf("failed to connectToTenantDB: %w", err)
-			}
-			defer tenantDB.Close()
+
 			cs := []CompetitionRow{}
-			if err := tenantDB.SelectContext(
+			if err := mysqlTenantDB.SelectContext(
 				ctx,
 				&cs,
 				"SELECT * FROM competition WHERE tenant_id=?",
@@ -686,7 +692,7 @@ func tenantsBillingHandler(c echo.Context) error {
 				return fmt.Errorf("failed to Select competition: %w", err)
 			}
 			for _, comp := range cs {
-				report, err := billingReportByCompetition(ctx, tenantDB, t.ID, comp.ID)
+				report, err := billingReportByCompetition(ctx, mysqlTenantDB, t.ID, comp.ID)
 				if err != nil {
 					return fmt.Errorf("failed to billingReportByCompetition: %w", err)
 				}
@@ -731,15 +737,8 @@ func playersListHandler(c echo.Context) error {
 	} else if v.role != RoleOrganizer {
 		return echo.NewHTTPError(http.StatusForbidden, "role organizer required")
 	}
-
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return fmt.Errorf("error connectToTenantDB: %w", err)
-	}
-	defer tenantDB.Close()
-
 	var pls []PlayerRow
-	if err := tenantDB.SelectContext(
+	if err := mysqlTenantDB.SelectContext(
 		ctx,
 		&pls,
 		"SELECT * FROM player WHERE tenant_id=? ORDER BY created_at DESC",
@@ -778,12 +777,6 @@ func playersAddHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "role organizer required")
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return err
-	}
-	defer tenantDB.Close()
-
 	params, err := c.FormParams()
 	if err != nil {
 		return fmt.Errorf("error c.FormParams: %w", err)
@@ -798,7 +791,7 @@ func playersAddHandler(c echo.Context) error {
 		}
 
 		now := time.Now().Unix()
-		if _, err := tenantDB.ExecContext(
+		if _, err := mysqlTenantDB.ExecContext(
 			ctx,
 			"INSERT INTO player (id, tenant_id, display_name, is_disqualified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
 			id, v.tenantID, displayName, false, now, now,
@@ -808,7 +801,7 @@ func playersAddHandler(c echo.Context) error {
 				id, displayName, false, now, now, err,
 			)
 		}
-		p, err := retrievePlayer(ctx, tenantDB, id)
+		p, err := retrievePlayer(ctx, mysqlTenantDB, id)
 		if err != nil {
 			return fmt.Errorf("error retrievePlayer: %w", err)
 		}
@@ -841,16 +834,10 @@ func playerDisqualifiedHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "role organizer required")
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return err
-	}
-	defer tenantDB.Close()
-
 	playerID := c.Param("player_id")
 
 	now := time.Now().Unix()
-	if _, err := tenantDB.ExecContext(
+	if _, err := mysqlTenantDB.ExecContext(
 		ctx,
 		"UPDATE player SET is_disqualified = ?, updated_at = ? WHERE id = ?",
 		true, now, playerID,
@@ -860,7 +847,7 @@ func playerDisqualifiedHandler(c echo.Context) error {
 			true, now, playerID, err,
 		)
 	}
-	p, err := retrievePlayer(ctx, tenantDB, playerID)
+	p, err := retrievePlayer(ctx, mysqlTenantDB, playerID)
 	if err != nil {
 		// 存在しないプレイヤー
 		if errors.Is(err, sql.ErrNoRows) {
@@ -901,12 +888,6 @@ func competitionsAddHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "role organizer required")
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return err
-	}
-	defer tenantDB.Close()
-
 	title := c.FormValue("title")
 
 	now := time.Now().Unix()
@@ -914,7 +895,7 @@ func competitionsAddHandler(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("error dispenseID: %w", err)
 	}
-	if _, err := tenantDB.ExecContext(
+	if _, err := mysqlTenantDB.ExecContext(
 		ctx,
 		"INSERT INTO competition (id, tenant_id, title, finished_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
 		id, v.tenantID, title, sql.NullInt64{}, now, now,
@@ -947,17 +928,11 @@ func competitionFinishHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "role organizer required")
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return err
-	}
-	defer tenantDB.Close()
-
 	id := c.Param("competition_id")
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "competition_id required")
 	}
-	_, err = retrieveCompetition(ctx, tenantDB, id)
+	_, err = retrieveCompetition(ctx, mysqlTenantDB, id)
 	if err != nil {
 		// 存在しない大会
 		if errors.Is(err, sql.ErrNoRows) {
@@ -967,7 +942,7 @@ func competitionFinishHandler(c echo.Context) error {
 	}
 
 	now := time.Now().Unix()
-	if _, err := tenantDB.ExecContext(
+	if _, err := mysqlTenantDB.ExecContext(
 		ctx,
 		"UPDATE competition SET finished_at = ?, updated_at = ? WHERE id = ?",
 		now, now, id,
@@ -996,18 +971,11 @@ func competitionScoreHandler(c echo.Context) error {
 	if v.role != RoleOrganizer {
 		return echo.NewHTTPError(http.StatusForbidden, "role organizer required")
 	}
-
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return err
-	}
-	defer tenantDB.Close()
-
 	competitionID := c.Param("competition_id")
 	if competitionID == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "competition_id required")
 	}
-	comp, err := retrieveCompetition(ctx, tenantDB, competitionID)
+	comp, err := retrieveCompetition(ctx, mysqlTenantDB, competitionID)
 	if err != nil {
 		// 存在しない大会
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1052,7 +1020,7 @@ func competitionScoreHandler(c echo.Context) error {
 	playerScoreRows := []PlayerScoreRow{}
 	// tenantで絞ってplayerリストをとる
 	dbPlayers := []PlayerRow{}
-	if err := tenantDB.SelectContext(ctx, &dbPlayers, "SELECT * FROM player WHERE tenant_id = ?", v.tenantID); err != nil {
+	if err := mysqlTenantDB.SelectContext(ctx, &dbPlayers, "SELECT * FROM player WHERE tenant_id = ?", v.tenantID); err != nil {
 		fmt.Errorf("error retrievePlayer: %w", err)
 	}
 
@@ -1075,6 +1043,7 @@ func competitionScoreHandler(c echo.Context) error {
 			if dbp.ID == playerID {
 				contain = true
 				break
+
 			}
 		}
 		if contain == false {
@@ -1108,7 +1077,7 @@ func competitionScoreHandler(c echo.Context) error {
 		})
 	}
 
-	if _, err := tenantDB.ExecContext(
+	if _, err := mysqlTenantDB.ExecContext(
 		ctx,
 		"DELETE FROM player_score WHERE tenant_id = ? AND competition_id = ?",
 		v.tenantID,
@@ -1117,7 +1086,7 @@ func competitionScoreHandler(c echo.Context) error {
 		return fmt.Errorf("error Delete player_score: tenantID=%d, competitionID=%s, %w", v.tenantID, competitionID, err)
 	}
 	for _, ps := range playerScoreRows {
-		if _, err := tenantDB.NamedExecContext(
+		if _, err := mysqlTenantDB.NamedExecContext(
 			ctx,
 			"INSERT INTO player_score (id, tenant_id, player_id, competition_id, score, row_num, created_at, updated_at) VALUES (:id, :tenant_id, :player_id, :competition_id, :score, :row_num, :created_at, :updated_at)",
 			ps,
@@ -1153,14 +1122,8 @@ func billingHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "role organizer required")
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return err
-	}
-	defer tenantDB.Close()
-
 	cs := []CompetitionRow{}
-	if err := tenantDB.SelectContext(
+	if err := mysqlTenantDB.SelectContext(
 		ctx,
 		&cs,
 		"SELECT * FROM competition WHERE tenant_id=? ORDER BY created_at DESC",
@@ -1170,7 +1133,7 @@ func billingHandler(c echo.Context) error {
 	}
 	tbrs := make([]BillingReport, 0, len(cs))
 	for _, comp := range cs {
-		report, err := billingReportByCompetition(ctx, tenantDB, v.tenantID, comp.ID)
+		report, err := billingReportByCompetition(ctx, mysqlTenantDB, v.tenantID, comp.ID)
 		if err != nil {
 			return fmt.Errorf("error billingReportByCompetition: %w", err)
 		}
@@ -1210,13 +1173,7 @@ func playerHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "role player required")
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return err
-	}
-	defer tenantDB.Close()
-
-	if err := authorizePlayer(ctx, tenantDB, v.playerID); err != nil {
+	if err := authorizePlayer(ctx, mysqlTenantDB, v.playerID); err != nil {
 		return err
 	}
 
@@ -1224,7 +1181,7 @@ func playerHandler(c echo.Context) error {
 	if playerID == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "player_id is required")
 	}
-	p, err := retrievePlayer(ctx, tenantDB, playerID)
+	p, err := retrievePlayer(ctx, mysqlTenantDB, playerID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusNotFound, "player not found")
@@ -1232,7 +1189,7 @@ func playerHandler(c echo.Context) error {
 		return fmt.Errorf("error retrievePlayer: %w", err)
 	}
 	cs := []CompetitionRow{}
-	if err := tenantDB.SelectContext(
+	if err := mysqlTenantDB.SelectContext(
 		ctx,
 		&cs,
 		"SELECT * FROM competition WHERE tenant_id = ? AND id IN (SELECT DISTINCT competition_id FROM player_score WHERE player_id = ?) ORDER BY created_at ASC",
@@ -1250,7 +1207,7 @@ func playerHandler(c echo.Context) error {
 	defer fl.Close()
 	var psds []PlayerScoreDetail
 	scoreRows := []PlayerScoreRow{}
-	err = tenantDB.SelectContext(
+	err = mysqlTenantDB.SelectContext(
 		ctx,
 		&scoreRows,
 		"SELECT * FROM player_score WHERE tenant_id = ? AND player_id = ?",
@@ -1315,13 +1272,7 @@ func competitionRankingHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "role player required")
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return err
-	}
-	defer tenantDB.Close()
-
-	if err := authorizePlayer(ctx, tenantDB, v.playerID); err != nil {
+	if err := authorizePlayer(ctx, mysqlTenantDB, v.playerID); err != nil {
 		return err
 	}
 
@@ -1331,7 +1282,7 @@ func competitionRankingHandler(c echo.Context) error {
 	}
 
 	// 大会の存在確認
-	competition, err := retrieveCompetition(ctx, tenantDB, competitionID)
+	competition, err := retrieveCompetition(ctx, mysqlTenantDB, competitionID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusNotFound, "competition not found")
@@ -1383,8 +1334,9 @@ func competitionRankingHandler(c echo.Context) error {
 		return fmt.Errorf("error flockByTenantID: %w", err)
 	}
 	defer fl.Close()
+
 	ranks := []CompetitionRank{}
-	if err := tenantDB.SelectContext(
+	if err := mysqlTenantDB.SelectContext(
 		ctx,
 		&ranks,
 		q,
@@ -1432,16 +1384,10 @@ func playerCompetitionsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "role player required")
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
+	if err := authorizePlayer(ctx, mysqlTenantDB, v.playerID); err != nil {
 		return err
 	}
-	defer tenantDB.Close()
-
-	if err := authorizePlayer(ctx, tenantDB, v.playerID); err != nil {
-		return err
-	}
-	return competitionsHandler(c, v, tenantDB)
+	return competitionsHandler(c, v, mysqlTenantDB)
 }
 
 // テナント管理者向けAPI
@@ -1456,13 +1402,7 @@ func organizerCompetitionsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "role organizer required")
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return err
-	}
-	defer tenantDB.Close()
-
-	return competitionsHandler(c, v, tenantDB)
+	return competitionsHandler(c, v, mysqlTenantDB)
 }
 
 func competitionsHandler(c echo.Context, v *Viewer, tenantDB dbOrTx) error {
@@ -1547,12 +1487,8 @@ func meHandler(c echo.Context) error {
 		})
 	}
 
-	tenantDB, err := connectToTenantDB(v.tenantID)
-	if err != nil {
-		return fmt.Errorf("error connectToTenantDB: %w", err)
-	}
 	ctx := context.Background()
-	p, err := retrievePlayer(ctx, tenantDB, v.playerID)
+	p, err := retrievePlayer(ctx, mysqlTenantDB, v.playerID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.JSON(http.StatusOK, SuccessResult{
